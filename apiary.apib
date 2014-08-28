@@ -1,0 +1,786 @@
+FORMAT: 1A
+HOST: http://x.sentinelsos.com
+
+# Dock X APIs
+API documentation for Dock X Web Services.
+
+Dock X Staging endpoint: [x.sentinelsos.com](http://x.sentinelsos.com)
+
+## Generic API Standards
+
+### HTTP Response Codes Used
+* 200 - OK
+* 202 - Accepted
+* 400 - Bad Request
+* 500 - Internal Server Error
+
+### Generic Response Format
+*\*All responses are of content type `application/json`*
+
+
+    {
+        "status":"<status constant>",
+        "result": {
+            ...
+        }
+    }
+
+
+## Sensor Standards
+
+### Sensor Short Names
+* Temperature : `temp`
+* Humidity: `hum`
+* LPG: `lpg`,
+* CO: `co`,
+* Smoke: `smoke`
+* Motion: `motion`
+* Light: `light`
+
+### Sensor Values
+* Temperature: Values in Celsius
+* Humidity: Values in percentage
+* LPG: Values from 0 to 1023
+* CO: Values from 0 to 1023
+* Smoke: Values from 0 to 1023
+* Motion: Either 0 or 1
+* LPG: Values from 0 to 1023
+
+### Sensor States and Alert Stages
+* Temperature:
+    * `extreme cold`: < -10 (alert)
+    * `cold`: >= -10 and < 16
+    * `normal`: >= 16 and < 26
+    * `warm`: >= 26 and < 40
+    * `excessive heat`: >= 40 (alert)
+* Humidity:
+    * `dry`: < 40 (alert)
+    * `normal`: >= 40 and < 66
+    * `high humidity`: >= 66 and < 80
+    * `excessive humidity`: >= 80 (alert)
+* Motion:
+    * `stillness`: 0
+    * `motion`: 1 (alert)
+* LPG, CO, Smoke and Light:
+    * `normal`: < 250
+    * `high`: >= 250 and < 700
+    * `excessive`: >= 700 (alert)
+
+
+# Group Access Management
+Access management to Dock X Web Services.
+
+## Sign up API [/access/signup]
+
+Request
+
+* email
+* password
+* name
+
+Response
+
+* status
+    * `OK` - on successfully signing up a user
+    * `USER_EXISTS` - if a user in the provided email id already exists
+    * `INVALID_REQUEST` - on invalid request, like params missing
+    * `ERROR` - on internal server errors
+* result
+    * `message` - additional information based on `status` values
+
+### Sign up user [POST]
++ Request (application/x-www-form-urlencoded)
+
+        email=john@smithco.com&
+        password=P@$$w03d&
+        name=John Doe
+
++ Response 200 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"OK",
+                "result": {
+                    "message":"Successfully signed up the user."
+                }
+            }
+
++ Response 202 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"USER_EXISTS",
+                "result": {
+                    "message":"A account in the given email already exists."
+                }
+            }
+
++ Response 400 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_REQUEST",
+                "result": {
+                    "message":"Invalid request. Sign up params cannot be null."
+                }
+            }
+
++ Response 500 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"ERROR",
+                "result": {
+                    "message":"Oops! Something went wrong, change few things and try again."
+                }
+            }
+
+## Sign in API [/access/signin]
+
+Request
+
+* email
+* password
+
+Response
+
+* status
+    * `OK` - on successfully signing in a user
+    * `INVALID_USER` - if a user in the provided email id does not exists
+    * `INVALID_PASSWORD` - if provided password is invalid
+    * `INVALID_REQUEST` - on invalid request, like params missing
+    * `ERROR` - on internal server errors
+* result
+    * `user_id` - user's id on successfully sign in
+    * `device_id` - unique id of the dock(dock_id), default device in user's account
+    * `message` - additional information based on `status` values if not `OK`  
+
+### Sign in user [POST]
++ Request (application/x-www-form-urlencoded)
+
+        email=john@smithco.com&
+        password=P@$$w03d
+
++ Response 200 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"OK",
+                "result": {
+                    "user_id":"537dc8fd66821f874002fdc6",
+                    "device_id": "DOC101"
+                }
+            }
+
++ Response 202 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_USER",
+                "result": {
+                    "message":"User does not exist for the given email id."
+                }
+            }
+
++ Response 202 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_PASSWORD",
+                "result": {
+                    "message":"User's password does not match."
+                }
+            }
+
++ Response 400 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_REQUEST",
+                "result": {
+                    "message":"Invalid request. Sign in params cannot be null."
+                }
+            }
+
++ Response 500 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"ERROR",
+                "result": {
+                    "message":"Oops! Something went wrong, change few things and try again."
+                }
+            }
+
+
+
+# Group Devices APIs
+APIs on Dock X devices
+
+## Add Device API [/devices/add]
+
+Request
+
+* user_id - a valid Dock X user's id
+* device_id - unique device id of the device that needs to be added to user's account
+* name - a user's friendly name given by the user for the device. e.g. LivingRoom Dock
+
+Response
+
+* status
+    * `OK` - on successfully adding a device to the user's account
+    * `INVALID_USER` - if the provided user_id does not exists
+    * `INVALID_REQUEST` - on invalid request, like params missing
+    * `ERROR` - on internal server errors
+* result
+    * `message` - additional information based on `status` values
+
+### Add device [POST]
++ Request (application/x-www-form-urlencoded)
+
+        user_id=537dc8fd66821f874002fdc6&
+        device_id=DOC101&
+        name=LivingRoom Dock
+
++ Response 200 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"OK",
+                "result": {
+                    "message":"Device added to user's account."
+                }
+            }
+
++ Response 202 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_USER",
+                "result": {
+                    "message":"User does not exist for the given user_id."
+                }
+            }
+
++ Response 400 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_REQUEST",
+                "result": {
+                    "message":"Invalid request. Add device params cannot be null."
+                }
+            }
+
++ Response 500 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"ERROR",
+                "result": {
+                    "message":"Oops! Something went wrong, change few things and try again."
+                }
+            }
+
+
+# Group Sensors APIs
+APIs for posting sensor data to web services and reteriving data.
+
+## Sensor API [/sensors]
+
+Request
+
+* device_id - unique device identification, for the devices existing in user's account
+* sensor - sensor name, available sensors: `temp`, `lpg`, `co`, `smoke`, `motion`, `light`
+* value - sensor reading value. no need to pass this param if sensor is `temp` 
+* temp - if sensor `temp`, value of temperature should be passed 
+* hum - if sensor `temp`, value of humidity should be passed
+
+Response
+
+* status
+    * `OK` - on successfully posting sensor data
+    * `INVALID_REQUEST` - on invalid request, like params missing
+    * `ERROR` - on internal server errors
+* result
+    * `message` - additional information based on `status` values
+    
+### Post Sensor data [POST]
++ Request (application/x-www-form-urlencoded)
+
+        device_id=DOC101&
+        sensor=lpg&
+        value=300
+
++ Response 200 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"OK",
+                "result": {
+                    message: "Sensor data saved."
+                }
+            }
+
++ Response 400 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_REQUEST",
+                "result": {
+                    "message":"Invalid request. Sensor params cannot be null."
+                }
+            }
+
++ Response 500 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"ERROR",
+                "result": {
+                    "message":"Oops! Something went wrong, change few things and try again."
+                }
+            }
+
+### Post Sensor data as GET [GET]
+
+All responses will be same as the POST version
+
++ Request (application/x-www-form-urlencoded)
+
+        device_id=DOC101&
+        sensor=lpg&
+        value=300
+
++ Response 200 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"OK",
+                "result": {
+                    message: "Sensor data saved."
+                }
+            }
+
+# Group Views APIs
+APIs for getting data for all screen views on mobile devices.
+
+## Home View [/views/home]
+
+Request
+
+* device_id - a valid Dock X device id, which belongs to the signed in user
+
+Response
+
+* status
+    * `OK` - on successfully posting sensor data
+    * `INVALID_REQUEST` - on invalid request, like params missing
+* result
+    * `deviceName` - a name given by the user to identify the device
+    * `deviceStatus` - online/offline status of the device
+    * `sensors`- list of sensors and their last known readings
+        * e.g. { "temp":22,"hum":32,"lpg":230,"co":null,"smoke":null,"motion":null,"light":null }
+        * `null` will be the value if no sensor data is available
+
+### Home view data [POST]
++ Request (application/x-www-form-urlencoded)
+
+        device_id=DOC101
+
++ Response 200 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"OK",
+                "result": {
+                    "deviceName": "LivingRoom Dock",
+                    "deviceStatus": "online",
+                    "sensors": {
+                        "temp": {
+                            "value": 22,
+                            "state": "normal"
+                        },
+                        "hum":{
+                            "value": 39,
+                            "state": "dry"
+                        },
+                        "lpg":{
+                            "value": 440,
+                            "state": "high"
+                        },
+                        "co":{
+                            "value": 190,
+                            "state": "normal"
+                        },
+                        "smoke":{
+                            "value": 122,
+                            "state": "normal"
+                        },
+                        "motion":{
+                            "value": 1,
+                            "state": "motion"
+                        },
+                        "light":{
+                            "value": 900,
+                            "state": "excessive"
+                        }
+                    }
+                }
+            }
+
++ Response 400 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_REQUEST",
+                "result": {
+                    "message":"Invalid request. device_id param cannot be null."
+                }
+            }
+
+## Sensor Views [/views/:sensor]
+
+Views for individual sensor data history.
+
+`:sensor` param should be any valid sensor: `temp`, `lpg`, `co`, `smoke`, `motion`, `light`
+
+Request
+
+* device_id - a valid Dock X device id, which belongs to the signed in user
+* hours(optional) - time frame for sensor data history, defaults to 48 hours
+
+Response
+
+* status
+    * `OK` - on successfully posting sensor data
+    * `INVALID_REQUEST` - on invalid request, like params missing or invalid sensor name
+* result
+    * array of sensor `value` and `time` objects
+
+### Sensor data history [POST]
++ Request (application/x-www-form-urlencoded)
+
+        device_id=DOC101&hours=12
+
++ Response 200 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"OK",
+                "result": [
+                    { "value": 240, "time": "2014-06-11T12:36:54.010Z" },
+                    { "value": 310, "time": "2014-06-11T12:37:18.352Z" }
+                ]
+            }
+
++ Response 400 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_REQUEST",
+                "result": {
+                    "message":"Invalid request. device_id param cannot be null."
+                }
+            }
+
+
+# Group Push Services APIs
+
+**GCM Push Notification Payload**
+
+```
+{
+    "type"  : "{alertType}",
+    "sensor": "{sensorName}",
+    "value" : {sensorValue},
+    "state" : "{sensorState}"
+}
+```
+
+* where:
+    * type: the push notification type; 
+        * `alert-sensor`: when a sensor enters an alert state
+        * `sync-sensor`: when a sensor value needs to be synced. This is a push-to-sync concept and should be notified to the user.
+    * sensor: name of the sensor for notification was generated for
+    * value: the current value of the sensor when notification was generated
+    * state: the state of the sensor. e.g. `excessive heat`, `normal`, etc.
+
+
+## Register Device [/push_services/register]
+
+Request
+
+* user_id - a valid Dock X user's id
+* token - GCM registration id or APNS token of the device from which the user is signed in
+* platform - device platfrom, currently only supports `android` and `ios`
+
+Response
+
+* status
+    * `OK` - on successful registration of a device to Dock X push services
+    * `TOKEN_EXISTS` - if the device is already registered with Dock X push services
+    * `INVALID_PLATFORM` - when unsupported platform values are passed
+    * `INVALID_REQUEST` - on invalid request, like params missing
+* result
+    * `message` - additional information based on `status` values
+    
+
+### Home view data [POST]
++ Request (application/x-www-form-urlencoded)
+
+        user_id=53983a17f205210000c9f2d1&
+        token=APA91bGlYZZjfuRgGUg8kHhSNCJyKhq&
+        platform=android
+
++ Response 200 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"OK",
+                "result": {
+                    "message":"Device added to push services."
+                }
+            }
+
++ Response 202 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_PLATFORM",
+                "result": {
+                    "message":"Unsupported device platform."
+                }
+            }
+
++ Response 202 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"TOKEN_EXISTS",
+                "result": {
+                    "message":"Device token already exists with the push services."
+                }
+            }
+
++ Response 400 (application/json)
+
+    + Header
+
+            X-Powered-By: Express
+
+    + Body
+
+            {
+                "status":"INVALID_REQUEST",
+                "result": {
+                    "message":"Invalid request. Push services add token params cannot be null."
+                }
+            }
+
+
+
+# Group Socket.IO APIs
+
+## Connect Event
+The default event emitted when joining the Dock X server host endpoint.
+
+Event: 
+
+* `connect`/`entrance`
+
+Acknowledgment:
+
+* `{ message: 'Connected to Dock X Server' }` 
+
+
+## Disconnect Event
+The default event emitted on disconnecting from the Dock X Server host endpoint
+
+Event:
+
+* `disconnect`
+
+Acknowledgment:
+
+* N/A
+
+
+## Join Room Event
+This event have to be emitted after connecting to the Dock X Server host endpoint. Makes the user join a socket room with the same name as the dock_id/device_id.
+
+Event:
+
+* `join_room`
+
+Data Params:
+
+* `dock_id` - the unique device id of the user's dock. e.g. `DOC101`
+* `user_agent` - The user agent from which the events are emitted. e.g. `Android`, `iPhone`, etc.
+
+Acknowledgment:
+
+* `{ message: 'Joined room {dock_id}' }`
+
+## Toggle Socket Device Event
+Emitted when on/off status of the socket device attached to the dock needed to be changed.
+
+Event:
+
+* `socket_toggle`
+
+Data Params:
+
+* `dock_id` - the unique device id of the user's dock. e.g. `DOC101`
+* `status` - the value should be `on` or `off`
+
+Acknowledgment:
+
+* `{ message: 'Socket toggled to {status}' }`
+
+
+## Send Sensors Data Event
+Send all sensor data as socket event
+
+Event:
+
+* `sensor_data`
+
+Data Params:
+
+* `device_id` - the unique device id of the user's dock. e.g. `DOC101`
+* `temp` - the value of `temp` sensor
+* `hum` - the value of `hum` sensor
+* `lpg` - the value of `lpg` sensor
+* `smoke` - the value of `smoke` sensor
+* `co` - the value of `co` sensor
+* `motion` - the value of `motion` sensor
+* `light` - the value of `light` sensor
+
+Acknowledgment:
+
+* `{ message: 'Sensor data received by DockX APIs' }`
+
+Acknowledgment for room members:
+
+* `{ message: 'New sensor data received by DockX APIs' }`
